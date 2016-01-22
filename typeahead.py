@@ -135,9 +135,8 @@ def query_fn(database, prefix_tree, command):
     search_strings = [search_string.lower()
                       for search_string in search_strings]
 
-    # compare function which returns items in descending
-    # order of score and with least recently added items
-    # first when the scores are the same
+    # compare function returns items in descending
+    # order of score and with least recently added items first
     def cmp_fn(a, b):
 
         a = database[a]
@@ -187,8 +186,6 @@ def wquery_fn(database, prefix_tree, command):
     search_strings = [search_string.lower()
                       for search_string in search_strings]
 
-    # same function as in QUERY but apply
-    # boosts to the scores first
     def cmp_fn(x, y):
 
         x = database[x]
