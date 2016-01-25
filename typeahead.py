@@ -3,7 +3,7 @@ import sys
 valid_types = ["user", "topic", "question", "board"]
 
 
-class Entry(object):
+class Entry():
 
     def __init__(self, type, id, score, words, entry_num):
         self.type = type
@@ -16,7 +16,7 @@ class Entry(object):
         return self.id
 
 
-class PrefixNode(object):
+class PrefixNode():
 
     def __init__(self):
         self.edges = {}
@@ -28,6 +28,9 @@ class PrefixTree(object):
     def __init__(self):
         self.root = PrefixNode()
 
+    # Descend into the tree character by character,
+    # adding the entry at each level, and create missing
+    # nodes as needed
     def add(self, word, entry):
         node = self.root
         for char in word:
@@ -38,6 +41,8 @@ class PrefixTree(object):
                 node = node.edges[char]
             node.entries.add(entry.id)
 
+    # Descend into the tree character by character,
+    # removing the entry at each level
     def remove(self, entry):
         for word in entry.words:
             node = self.root
@@ -46,6 +51,9 @@ class PrefixTree(object):
                 if entry.id in node.entries:
                     node.entries.remove(entry.id)
 
+    # search is as simple as returning the list
+    # of entries for the node at the end of the path
+    # traced by the characters in prefix
     def search(self, prefix):
         node = self.root
         for char in prefix:
@@ -61,7 +69,7 @@ def add_fn(database, prefix_tree, command, command_num):
     command_comps = command.split()
 
     # verify the command length
-    if len(command_comps) < 4:
+    if (len(command_comps) < 4):
         raise ValueError("Invalid command - " + command)
 
     # verify the type
@@ -81,7 +89,7 @@ def add_fn(database, prefix_tree, command, command_num):
     # add the word to the prefix tree and the database
     for word in words:
         prefix_tree.add(word, entry)
-        database[entry.id] = entry
+    database[entry.id] = entry
 
 
 def del_fn(database, prefix_tree, command):
@@ -89,7 +97,7 @@ def del_fn(database, prefix_tree, command):
     command_comps = command.split()
 
     # verify the command length
-    if len(command_comps) < 2:
+    if (len(command_comps) < 2):
         raise ValueError("Invalid command - " + command)
 
     entry_id = command_comps[1]
@@ -100,6 +108,7 @@ def del_fn(database, prefix_tree, command):
 
 
 def perform_query(prefix_tree, search_strings, num_results, cmp_fn):
+    """Common code path for QUERY and WQUERY commands"""
 
     # get the search results for each prefix
     sets = []
@@ -122,7 +131,7 @@ def query_fn(database, prefix_tree, command):
 
     command_comps = command.split()
 
-    if len(command_comps) < 3:
+    if (len(command_comps) < 3):
         raise ValueError("Invalid command - " + command)
 
     num_results = int(command_comps[1])
@@ -135,17 +144,18 @@ def query_fn(database, prefix_tree, command):
     search_strings = [search_string.lower()
                       for search_string in search_strings]
 
-    # compare function returns items in descending
-    # order of score and with least recently added items first
-    def cmp_fn(a, b):
+    # compare function which returns items in descending
+    # order of score and with least recently added items
+    # first when the scores are the same
+    def cmp_fn(x, y):
 
-        a = database[a]
-        b = database[b]
+        x = database[x]
+        y = database[y]
 
-        if a.score == b.score:
-            return 1 if a.entry_num < b.entry_num else -1
+        if x.score == y.score:
+            return 1 if x.entry_num < y.entry_num else -1
         else:
-            return 1 if a.score < b.score else -1
+            return 1 if x.score < y.score else -1
 
     perform_query(prefix_tree, search_strings, num_results, cmp_fn)
 
@@ -154,7 +164,7 @@ def wquery_fn(database, prefix_tree, command):
 
     command_comps = command.split()
 
-    if len(command_comps) < 4:
+    if (len(command_comps) < 4):
         raise ValueError("Invalid command - " + command)
 
     num_results = int(command_comps[1])
@@ -186,6 +196,8 @@ def wquery_fn(database, prefix_tree, command):
     search_strings = [search_string.lower()
                       for search_string in search_strings]
 
+    # same function as in QUERY but apply
+    # boosts to the scores first
     def cmp_fn(x, y):
 
         x = database[x]
@@ -196,8 +208,8 @@ def wquery_fn(database, prefix_tree, command):
 
         if x.id in id_boosts:
             score_x *= id_boosts[x.id]
-            if y.id in id_boosts:
-                score_y *= id_boosts[y.id]
+        if y.id in id_boosts:
+            score_y *= id_boosts[y.id]
 
         if score_x == score_y:
             return 1 if x.entry_num < y.entry_num else -1
@@ -209,20 +221,25 @@ def wquery_fn(database, prefix_tree, command):
 
 def main():
 
+    # get the stdin
     input = sys.stdin.readlines()
 
+    # make sure there is something to read
     if len(input) < 1:
         raise ValueError("Input was empty")
 
-    num_commands = int(input[0])
+    N = int(input[0])
 
-    if (len(input)) != num_commands+1:
-        raise ValueError("Number of lines in input did not match")
+    # verify the length of the input
+    if (len(input)) != N+1:
+        raise ValueError("Number of lines in input did not match value of N")
 
+    # create the database
     database = {}
     prefix_tree = PrefixTree()
     command_num = 0
 
+    # create a dictionary of the command functions
     command_fns = {
         "ADD": lambda cmd: add_fn(database, prefix_tree, cmd, command_num),
         "DEL": lambda cmd: del_fn(database, prefix_tree, cmd),
@@ -230,20 +247,24 @@ def main():
         "WQUERY": lambda cmd: wquery_fn(database, prefix_tree, cmd),
     }
 
+    # execute each command
     for command in input[1:]:
 
+        # strip newline character at the end of the string
         if command[-1] == '\n':
             command = command[:-1]
 
+        # get the command name
         command_name = command.split()[0]
 
+        # check that the command is valid
         if command_name not in command_fns.keys():
             raise ValueError("Unrecognized command - " + command_name)
 
+        # run it
         command_fns[command_name](command)
 
         command_num += 1
 
 if __name__ == "__main__":
     main()
-
